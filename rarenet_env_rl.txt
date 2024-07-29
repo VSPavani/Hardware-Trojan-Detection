@@ -1,0 +1,122 @@
+import gymnasium as gym
+from gymnasium import spaces
+import numpy as np
+import random
+from pysat.solvers import Solver
+from stable_baselines3 import PPO
+from stable_baselines3.common.env_checker import check_env
+
+class RareNetsEnv(gym.Env):
+    def __init__(self, rare_nets, cnf_clauses, rare_values):
+        super(RareNetsEnv, self).__init__()
+        self.rare_nets = rare_nets
+        self.cnf_clauses = cnf_clauses
+        self.rare_values = rare_values  # Dictionary mapping rare nets to their rare values
+        self.action_space = spaces.Discrete(len(rare_nets))
+        self.observation_space = spaces.MultiBinary(len(rare_nets))
+        self.state = set()
+        self.done = False
+        self.truncated = False
+        self.max_steps = 100  # Define a maximum number of steps per episode
+        self.current_step = 0
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        if seed is not None:
+            random.seed(seed)
+            np.random.seed(seed)
+        self.state = {random.choice(self.rare_nets)}
+        self.done = False
+        self.truncated = False
+        self.current_step = 0
+        return self._get_obs(), {}
+
+    def step(self, action):
+        rare_net = self.rare_nets[action]
+        reward = 0
+
+        if rare_net not in self.state and self._is_compatible(rare_net):
+            self.state.add(rare_net)
+            reward = len(self.state) ** 2
+
+        self.done = len(self.state) == len(self.rare_nets)
+        self.current_step += 1
+        self.truncated = self.current_step >= self.max_steps
+
+        return self._get_obs(), reward, self.done, self.truncated, {}
+
+    def _get_obs(self):
+        obs = np.zeros(len(self.rare_nets), dtype=np.int8)
+        for rare_net in self.state:
+            obs[self.rare_nets.index(rare_net)] = 1
+        return obs
+
+    def _is_compatible(self, rare_net):
+      with Solver() as solver:
+            for clause in self.cnf_clauses:
+                solver.add_clause(clause)
+            for m in self.state:
+              net_index = int(m[1:])  # Extract numeric part of the net name
+              rare_value = rare_values1[m]
+              if rare_value:
+                solver.add_clause([net_index])  # Positive literal
+              else:
+                solver.add_clause([-net_index])  # Negative literal
+
+            net_index = int(rare_net[1:])  # Extract numeric part of the net name
+            rare_value = rare_values1[rare_net]
+            if rare_value:
+                solver.add_clause([net_index])  # Positive literal
+            else:
+                solver.add_clause([-net_index])  # Negative literal
+            is_satisfiable = solver.solve()
+            return is_satisfiable
+        # check =True
+        # for st in self.state:
+        #     if PC[st][rare_net] == False:  # PC is undefined in this context
+        #         check = False
+        # return check
+
+    def render(self, mode='human'):
+        print(f"State: {self.state}")
+
+# Initialize environment
+rare_nets = rare_nets  # Define your rare nets
+cnf_clauses = cnf_circuit  # Define your CNF clauses
+rare_values = rare_values  # Define your rare values
+
+env = RareNetsEnv(rare_nets, cnf_clauses, rare_values)
+
+# Verify the environment
+check_env(env)
+
+# Create and train the PPO agent
+model = PPO('MlpPolicy', env, verbose=1)
+model.learn(total_timesteps=10000)
+
+# Track all different sets of compatible rare nets during or after training
+all_compatible_sets = []
+
+# Run trained model and collect compatible sets
+num_episodes = 5  # Number of episodes for evaluation
+for episode in range(num_episodes):
+    observation, _ = env.reset(seed=episode)
+    done = False
+    truncated = False
+    while not done and not truncated:
+        action, _states = model.predict(observation, deterministic=True)
+        observation, reward, done, truncated, _ = env.step(action)
+
+    # After each episode, determine compatible rare nets
+    compatible_nets = []
+    for net in env.rare_nets:
+        if env._is_compatible(net):
+            compatible_nets.append(net)
+            env.state.add(net)
+
+    if compatible_nets:
+        all_compatible_sets.append(set(compatible_nets))  # Store as a set to remove duplicates
+
+print("All Different Combinations of Compatible Rare Nets:")
+for i, compatible_set in enumerate(all_compatible_sets):
+    print(f"Set {i + 1}: {compatible_set}")

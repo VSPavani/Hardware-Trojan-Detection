@@ -1,0 +1,55 @@
+
+!pip install python-sat
+
+from pysat.solvers import Solver
+
+def initialize_pairwise_compatibility(cnf_clauses, rare_nets, rare_values):
+    # Initialize pairwise compatibility matrix
+    PC = {r1: {r2: False for r2 in rare_nets} for r1 in rare_nets}
+
+    # Iterate through all pairs of rare nets
+    for r1 in (rare_nets):
+        for r2 in (rare_nets):
+            if r1 == r2:
+                PC[r1][r2] = True
+            else:
+                with Solver(name='g3') as solver:
+                    for clause in cnf_clauses:
+                        solver.add_clause(clause)
+
+                    # Add constraints setting r1 and r2 to their rare values
+                    net_index1 = int(r1[1:])  # Extract numeric part of the net name
+                    net_index2 = int(r2[1:])  # Extract numeric part of the net name
+                    rare_value1 = rare_values1[r1]
+                    rare_value2 = rare_values1[r2]
+
+                    if rare_value1:
+                        solver.add_clause([net_index1])  # Positive literal
+                    else:
+                        solver.add_clause([-net_index1])  # Negative literal
+
+                    if rare_value2:
+                        solver.add_clause([net_index2])  # Positive literal
+                    else:
+                        solver.add_clause([-net_index2])  # Negative literal
+
+                    # Check if the constraints are satisfiable
+                    is_satisfiable = solver.solve()
+                    PC[r1][r2] = is_satisfiable
+
+    return PC
+
+# Example usage:
+# Define your circuit CNF clauses, list of rare nets, and corresponding rare values
+cnf_clauses = cnf_circuit
+rare_nets = rare_nets
+rare_values = list(rare_values1.items())
+
+# Call the function to initialize pairwise compatibility
+PC = initialize_pairwise_compatibility(cnf_clauses, rare_nets, rare_values)
+
+# Print or use PC as needed
+for r1 in rare_nets:
+    for r2 in rare_nets:
+        print(PC[r1][r2],end=" ")
+    print("\n")

@@ -1,0 +1,41 @@
+from pysat.solvers import Solver
+
+def add_clauses(solver, cnf_clauses):
+    for clause in cnf_clauses:
+        solver.add_clause(clause)
+
+def add_known_values(solver, known_values):
+    for node, value in known_values.items():
+        index = int(node[1:])  # Assumes Nxxx format
+        clause = [index] if value else [-index]
+        solver.add_clause(clause)
+
+def solve_circuit(cnf_clauses, known_values):
+    solver = Solver(name='g3')
+    add_clauses(solver, cnf_clauses)
+    add_known_values(solver, known_values)
+
+    print("CNF Clauses:", cnf_clauses)
+    print("Known Values:", known_values)
+
+    if solver.solve():
+        model = solver.get_model()
+        node_values = {f'N{abs(lit)}': (lit > 0) for lit in model}
+        return node_values
+    else:
+        return None
+
+# Example usage:
+cnf_clauses = cnf_circuit
+known_values = {}
+for m in all_compatible_sets[0]:
+    known_values[m] = rare_values1[m]
+
+node_values = solve_circuit(cnf_clauses, known_values)
+if node_values:
+    print("Node values in the circuit:")
+    for node, value in node_values.items():
+      if(node in input_nodes or node in output_nodes or node in rare_nets):
+        print(f"{node}: {value}")
+else:
+    print("The circuit has no solution that satisfies all clauses.")

@@ -1,0 +1,93 @@
+from collections import OrderedDict
+
+class Gate:
+    def __init__(self, name, gate_type, output, inputs):
+        self.name = name
+        self.gate_type = gate_type
+        self.output = output
+        self.inputs = inputs
+        self.cc0 = float('inf')
+        self.cc1 = float('inf')
+        self.co = float('inf')
+
+def parse_netlist(netlist_lines):
+    gates = {}
+    for line in netlist_lines:
+        parts = line.strip().split()
+        if len(parts) < 5:
+            continue
+        gate_type = parts[0]
+        name = parts[1]
+
+        # Extract output and inputs
+        output = None
+        inputs = []
+        for part in parts[3:]:
+            if '(' in part and ')' in part:
+                signal = part.split('(')[1].split(')')[0]
+                if '.Q' in part:
+                    output = signal
+                elif '.DIN' in part:
+                    inputs.append(signal)
+
+        # Create gate instance and store in dictionary
+        if output and inputs:
+            gates[output] = Gate(name, gate_type, output, inputs)
+
+    return gates
+
+def calculate_controllability(gates):
+    for gate in gates.values():
+        if gate.gate_type == 'and2s1':
+            gate.cc0 = min([gates[input_name].cc0 for input_name in gate.inputs if input_name in gates]) + 1
+            gate.cc1 = sum([gates[input_name].cc1 for input_name in gate.inputs if input_name in gates]) + 1
+        if gate.gate_type == 'hi1s1':
+            gate.cc0 = float('inf')
+            gate.cc1 = 0
+        if gate.gate_type == 'nor2s1':
+            input_a, input_b = gate.inputs
+            gate.cc0 = gates[input_a].cc1 + gates[input_b].cc1 + 1
+            gate.cc1 = min(gates[input_a].cc0, gates[input_b].cc0) + 1
+
+
+def calculate_observability(gates):
+    for gate in gates.values():
+        if gate.gate_type == 'hi1s1':
+            gate.co = float('inf')  # CO for a constant high signal gate can be set to a large value
+        elif gate.gate_type == 'and2s1':
+            for input_name in gate.inputs:
+                if input_name in gates:
+                    input_gate = gates[input_name]
+                    input_gate.co = min([gate.co + sum([gates[inp].cc1 if inp != input_name else 0 for inp in gate.inputs if inp in gates]) for gate in gates.values() if input_name in gate.inputs]) + 1
+        elif gate.gate_type == 'nor2s1':
+            for input_name in gate.inputs:
+                if input_name in gates:
+                    input_gate = gates[input_name]
+                    input_gate.co = min([gate.co + sum([gates[inp].cc0 if inp != input_name else 0 for inp in gate.inputs if inp in gates]) for gate in gates.values() if input_name in gate.inputs]) + 1
+
+def print_scoap(gates):
+    for gate in gates.values():
+        print(f"Gate {gate.name}: CC0 = {gate.cc0}, CC1 = {gate.cc1}, CO = {gate.co}")
+
+# Example netlist input
+netlist_lines = [
+"and2s1 U3 ( .Q(N549), .DIN1(N545), .DIN2(N546) );",
+"and2s1 U1 ( .Q(N545), .DIN1(N1), .DIN2(N18) );",
+"and2s1 U2 ( .Q(N546), .DIN1(N1), .DIN2(N35) );",
+]
+
+# Initialize primary inputs with controllability values
+primary_inputs = ['N1', 'N18', 'N35']
+gates = parse_netlist(netlist_lines)
+
+for primary_input in primary_inputs:
+    gates[primary_input] = Gate(primary_input, 'INPUT', [],[])
+    gates[primary_input].cc0 = 1
+    gates[primary_input].cc1 = 1
+    gates[primary_input].co = 0
+
+gates=OrderedDict(reversed(list(gates.items())))
+# Calculate SCOAP metrics
+calculate_controllability(gates)
+calculate_observability(gates)
+print_scoap(gates)
