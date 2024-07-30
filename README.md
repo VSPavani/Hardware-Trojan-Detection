@@ -1,6 +1,6 @@
 **<h1>Hardware Trojan detection using reinforcement learning</h1>**
 
-<h3>Hardware Trojans are nefarious alterations or additions to a hardware circuit or design, deliberately inserted by an adversary. These modifications can trigger a range of undesirable behaviors, undermining the integrity, security, and functionality of the hardware. Traditional methods for detecting hardware Trojans often fail due to the advanced and hidden nature of these malicious changes, and they are also computationally intensive. This work investigates the use of reinforcement learning (RL) as an innovative approach for detecting hardware Trojans.</h3>
+<h4>Hardware Trojans are nefarious alterations or additions to a hardware circuit or design, deliberately inserted by an adversary. These modifications can trigger a range of undesirable behaviors, undermining the integrity, security, and functionality of the hardware. Traditional methods for detecting hardware Trojans often fail due to the advanced and hidden nature of these malicious changes, and they are also computationally intensive. This work investigates the use of reinforcement learning (RL) as an innovative approach for detecting hardware Trojans.</h4>
 <br />
 <br />
 <h6>References: <br />
